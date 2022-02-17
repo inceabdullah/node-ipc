@@ -3,6 +3,8 @@ import Defaults from '../entities/Defaults.js';
 import Client from '../dao/client.js';
 import Server from '../dao/socketServer.js';
 import util from 'util';
+import { mkdirParentsPathSync } from "../helpers/mkdirp.js";
+import fileUnlink from '../helpers/fileUnlink.js';
 
 class IPC{
     constructor(){
@@ -97,7 +99,7 @@ function disconnect(id){
     delete this.of[id];
 }
 
-function serve(path,callback){
+function serve(path,callback, options={}){
     if(typeof path=='function'){
         callback=path;
         path=false;
@@ -113,6 +115,35 @@ function serve(path,callback){
 
     if(!callback){
         callback=emptyCallback;
+    }
+
+    const {
+        recursive,
+        recreate
+    } = options;
+
+    if (recreate) {
+        try {
+            fileUnlink(path);
+        } catch (e){
+            this.log(
+                'Error deleting socket file',
+                path,
+                e
+            );
+        }
+    }
+
+    if (recursive) {
+        try {
+            mkdirParentsPathSync(path);
+        } catch (e) {
+            this.log(
+                'Error creating socket directory',
+                path,
+                e
+            );
+        }
     }
 
     this.server=new Server(
